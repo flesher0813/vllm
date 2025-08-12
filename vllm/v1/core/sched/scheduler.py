@@ -883,6 +883,11 @@ class Scheduler(SchedulerInterface):
             else:
                 # Invariant: EngineCore returns no partial prefill outputs.
                 assert not prompt_logprobs_tensors
+            
+            if getattr(model_runner_output, "finished_dumping", None) is not None:
+                if not hasattr(request, "succeed_dumped_blocks"):
+                    request.succeed_dumped_blocks = []
+                request.succeed_dumped_blocks.extend(model_runner_output.finished_dumping.get(req_id, []))
 
         # Remove the stopped requests from the running and waiting queues.
         if stopped_running_reqs:
@@ -892,11 +897,6 @@ class Scheduler(SchedulerInterface):
         if stopped_preempted_reqs:
             # This is a rare case and unlikely to impact performance.
             self.waiting.remove_requests(stopped_preempted_reqs)
-        
-        if getattr(model_runner_output, "finished_dumping", None) is not None:
-            if not hasattr(request, "succeed_dumped_blocks"):
-                request.succeed_dumped_blocks = []
-            request.succeed_dumped_blocks.extend(model_runner_output.finished_dumping.get(req_id, []))
 
         # KV Connector: update state for finished KV Transfers.
         if model_runner_output.kv_connector_output:
